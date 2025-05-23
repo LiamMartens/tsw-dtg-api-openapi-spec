@@ -1,0 +1,236 @@
+{
+  "openapi": "3.1.0",
+  "components": {
+    "schemas": {
+      "OperationResultType": {
+        "enum": ["Success", "Error"]
+      },
+      "ResultBaseObject": {
+        "type": "object",
+        "properties": {
+          "Result": {
+            "$ref": "#/components/schemas/OperationResultType"
+          },
+          "Message": {
+            "type": "string",
+            "description": "Message describing the result, most likely an error message"
+          }
+        },
+        "required": ["Result"]
+      },
+      "NodeEndpoint": {
+        "type": "object",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "Name of the endpoint"
+          },
+          "Writable": {
+            "type": "boolean",
+            "description": "Whether the endpoint is writable"
+          }
+        },
+        "required": ["Name"]
+      },
+      "NodeSummary": {
+        "type": "object",
+        "properties": {
+          "NodePath": {
+            "type": "string",
+            "description": "Path to the node"
+          },
+          "NodeName": {
+            "type": "string",
+            "description": "Name of the node"
+          },
+          "Name": {
+            "type": "string",
+            "description": "Name of the node. Some nodes only have Name which seems to mean they aren't really accessible?"
+          },
+          "Nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeSummary"
+            },
+            "description": "List of child nodes"
+          },
+          "Endpoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeEndpoint"
+            },
+            "description": "List of endpoints for the node"
+          }
+        },
+        "required": []
+      },
+      "APIInfoMeta": {
+        "type": "object",
+        "properties": {
+          "Worker": { "type": "string" },
+          "GameName": { "type": "string", "examples": ["Train Sim World 5"] },
+          "GameBuildNumber": { "type": "number" },
+          "APIVersion": { "type": "number" },
+          "GameInstanceID": { "type": "string" }
+        },
+        "required": [
+          "Worker",
+          "GameBuildNumber",
+          "APIVersion",
+          "GameInstanceID",
+          "GameName"
+        ]
+      },
+      "APIInfoRoute": {
+        "type": "object",
+        "properties": {
+          "Verb": {
+            "type": "string",
+            "description": "HTTP verb used to access the route"
+          },
+          "Path": {
+            "type": "string",
+            "description": "Path to the route"
+          },
+          "Description": {
+            "type": "string",
+            "description": "Description of the route"
+          }
+        },
+        "required": ["Verb", "Path", "Description"]
+      }
+    },
+    "responses": {
+      "ListNodeInformationResponse_200": {
+        "description": "Node information listing response. This endpoint is contextual. ie: If you're not in a train it will not return CurrentDrivableActor. It also does not list Endpoints when requesting root. I believe it only returns endpoints when requesting the actual node which has the endpoints.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/ResultBaseObject"
+                },
+                {
+                  "$ref": "#/components/schemas/NodeSummary"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/info": {
+      "get": {
+        "operationId": "info",
+        "responses": {
+          "200": {
+            "description": "API information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "Meta": {
+                      "$ref": "#/components/schemas/APIInfoMeta"
+                    },
+                    "HttpRoutes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/APIInfoRoute"
+                      }
+                    }
+                  },
+                  "required": ["Meta", "HttpRoutes"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/list": {
+      "get": {
+        "operationId": "list_root",
+        "parameters": [
+          {
+            "name": "node_path",
+            "in": "path",
+            "required": true,
+            "description": "Path to the node. Period separated and excluding Root. prefix",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ListNodeInformationResponse_200"
+          }
+        }
+      }
+    },
+    "/list/{node_path}": {
+      "get": {
+        "operationId": "list_node",
+        "parameters": [
+          {
+            "name": "node_path",
+            "in": "path",
+            "required": true,
+            "description": "Path to the node. Period separated and excluding Root. prefix",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ListNodeInformationResponse_200"
+          }
+        }
+      }
+    },
+    "/get/{node_path}": {
+      "get": {
+        "operationId": "get_node",
+        "parameters": [
+          {
+            "name": "node_path",
+            "in": "path",
+            "required": true,
+            "description": "Path to the node. Period separated and excluding Root. prefix",
+            "example": "Driveraid.Data",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Requested information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ResultBaseObject" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Values": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
